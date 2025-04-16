@@ -47,7 +47,7 @@ public class TutorScraper {
                 button.click();
                 Thread.sleep(1000);
             } catch (Exception e) {
-                System.out.println("Кнопка 'Показать ещё 20' не найдена или больше неактивна");
+                System.out.println("The 'Показать ещё 20' button was not found or is no longer active");
                 break;
             }
         }
@@ -68,7 +68,7 @@ public class TutorScraper {
         }
 
         driver.quit();
-        System.out.println("Найдено ссылок на анкеты: " + profileLinks.size());
+        System.out.println("Found links to profiles: " + profileLinks.size());
 
         ExecutorService executor = Executors.newFixedThreadPool(6);
         List<Future<Void>> tasks = new ArrayList<>();
@@ -92,14 +92,14 @@ public class TutorScraper {
                         if (!text.isEmpty()) {
                             int price = Integer.parseInt(text);
                             if (price >= MIN_PRICE && price <= MAX_PRICE) {
-                                System.out.println("Имя: " + name + " | Цена: " + price + " | URL: " + link);
+                                System.out.println("Name: " + name + " | Price: " + price + " | URL: " + link);
                                 filteredTutors.add(new String[]{name, String.valueOf(price), link});
                                 break;
                             }
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println("Ошибка при обработке: " + link);
+                    System.out.println("Error while processing: " + link);
                 } finally {
                     innerDriver.quit();
                 }
@@ -116,10 +116,10 @@ public class TutorScraper {
                 writer.printf("%s,%s,%s%n", row[0], row[1], row[2]);
             }
         } catch (Exception e) {
-            System.out.println("Ошибка при записи в CSV: " + e.getMessage());
+            System.out.println("Error writing to CSV: " + e.getMessage());
         }
 
-        System.out.println("Готово. Отфильтрованные данные сохранены в filtered_tutors.csv");
+        System.out.println("Done. Filtered data saved to filtered_tutors.csv");
     }
 }
 

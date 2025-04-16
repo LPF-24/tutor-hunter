@@ -18,7 +18,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.util.*;
+
 public class TutorScraper {
+    private static final List<String> KEYWORDS = List.of("говор", "барьер", "устный", "speaking", "общен", "живой");
+    private static final int MIN_PRICE = 300;
+    private static final int MAX_PRICE = 5000;
+
     public static void main(String[] args) throws InterruptedException {
         ChromeOptions options = new ChromeOptions();
         //options.addArguments("--headless=new");
@@ -28,29 +36,26 @@ public class TutorScraper {
 
         WebDriver driver = new ChromeDriver(options);
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
-
         driver.get("https://profi.ru/repetitor/english/?seamless=1&tabName=PROFILES");
 
         Set<String> profileLinks = new HashSet<>();
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 1; i++) {
             try {
                 WebElement button = wait.until(ExpectedConditions.elementToBeClickable(
                         By.xpath("//button[normalize-space()='Показать ещё 20']")));
                 button.click();
-                Thread.sleep(1000); // Даем время контенту прогрузиться
+                Thread.sleep(1000);
             } catch (Exception e) {
                 System.out.println("Кнопка 'Показать ещё 20' не найдена или больше неактивна");
                 break;
             }
         }
 
-        // Ищем анкеты — ссылки содержат параметр profileId
         List<WebElement> cards = driver.findElements(By.xpath("//a[contains(@href, 'profileId=')]"));
         for (WebElement card : cards) {
             String href = card.getDomAttribute("href");
             if (href != null && !href.isEmpty()) {
-                //обрабатываем относительные и некорректные ссылки
                 if (href.startsWith("//")) {
                     href = "https:" + href;
                 } else if (href.startsWith("/")) {
@@ -67,14 +72,32 @@ public class TutorScraper {
 
         ExecutorService executor = Executors.newFixedThreadPool(6);
         List<Future<Void>> tasks = new ArrayList<>();
+        List<String[]> filteredTutors = Collections.synchronizedList(new ArrayList<>());
 
         for (String link : profileLinks) {
             tasks.add(executor.submit(() -> {
                 WebDriver innerDriver = new ChromeDriver(options);
                 try {
                     innerDriver.get(link);
+
                     String name = innerDriver.findElement(By.tagName("h1")).getText();
-                    System.out.println("Имя: " + name + " | URL: " + link);
+                    String desc = innerDriver.findElement(By.tagName("body")).getText().toLowerCase();
+
+                    boolean hasKeywords = KEYWORDS.stream().anyMatch(desc::contains);
+                    if (!hasKeywords) return null;
+
+                    List<WebElement> priceBlocks = innerDriver.findElements(By.xpath("//span[contains(text(),'\u20BD')]"));
+                    for (WebElement block : priceBlocks) {
+                        String text = block.getText().replaceAll("[^0-9]", "");
+                        if (!text.isEmpty()) {
+                            int price = Integer.parseInt(text);
+                            if (price >= MIN_PRICE && price <= MAX_PRICE) {
+                                System.out.println("Имя: " + name + " | Цена: " + price + " | URL: " + link);
+                                filteredTutors.add(new String[]{name, String.valueOf(price), link});
+                                break;
+                            }
+                        }
+                    }
                 } catch (Exception e) {
                     System.out.println("Ошибка при обработке: " + link);
                 } finally {
@@ -83,8 +106,20 @@ public class TutorScraper {
                 return null;
             }));
         }
+
         executor.shutdown();
         executor.awaitTermination(90, TimeUnit.MINUTES);
-        System.out.println("Готово");
+
+        try (PrintWriter writer = new PrintWriter(new FileWriter("filtered_tutors.csv"))) {
+            writer.println("Name,Price,URL");
+            for (String[] row : filteredTutors) {
+                writer.printf("%s,%s,%s%n", row[0], row[1], row[2]);
+            }
+        } catch (Exception e) {
+            System.out.println("Ошибка при записи в CSV: " + e.getMessage());
+        }
+
+        System.out.println("Готово. Отфильтрованные данные сохранены в filtered_tutors.csv");
     }
 }
+

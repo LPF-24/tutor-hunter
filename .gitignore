@@ -1,4 +1,5 @@
 src/main/java/org/profi/ru/SeleniumTest.java
+filtered_tutors.csv
 
 target/
 !.mvn/wrapper/maven-wrapper.jar

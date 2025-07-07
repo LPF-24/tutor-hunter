@@ -14,7 +14,7 @@ Parser for searching tutors on the profi.ru website according to specified crite
 
 ## 📌 Project Status
 
-✅ Core functionality is complete.  
+❌ The project is under development, functionality is not yet available 
 🛠 JavaDoc and integration testing to be added in future iterations.
 
 ## 👤 Author
